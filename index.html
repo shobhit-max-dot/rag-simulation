@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RAG Simulator</title>
+
+<style>
+body{
+font-family: Arial, sans-serif;
+background:#0f172a;
+color:white;
+margin:0;
+padding:30px;
+}
+
+h1{
+text-align:center;
+margin-bottom:30px;
+}
+
+.container{
+max-width:1100px;
+margin:auto;
+}
+
+.card{
+background:#1e293b;
+padding:20px;
+margin-bottom:20px;
+border-radius:10px;
+box-shadow:0 5px 20px rgba(0,0,0,0.4);
+}
+
+button{
+background:#38bdf8;
+border:none;
+padding:10px 18px;
+border-radius:6px;
+cursor:pointer;
+margin-top:10px;
+}
+
+button:hover{
+background:#0ea5e9;
+}
+
+textarea{
+width:100%;
+height:100px;
+border-radius:6px;
+padding:10px;
+border:none;
+}
+
+input{
+width:100%;
+padding:10px;
+border-radius:6px;
+border:none;
+}
+
+.step{
+margin-top:10px;
+padding:10px;
+background:#334155;
+border-radius:6px;
+font-size:14px;
+}
+
+.chunk{
+background:#475569;
+margin:6px;
+padding:8px;
+border-radius:6px;
+display:inline-block;
+}
+
+.embedding{
+background:#6366f1;
+margin:6px;
+padding:8px;
+border-radius:6px;
+display:inline-block;
+font-size:12px;
+}
+
+.answer{
+background:#16a34a;
+padding:15px;
+border-radius:8px;
+margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>RAG Pipeline Simulator</h1>
+
+<div class="container">
+
+<div class="card">
+<h3>Step 1: Add Document (Policy / Knowledge Base)</h3>
+<textarea id="docInput">Company leave policy: Employees are entitled to 20 days annual leave. Sick leave requires manager approval. Remote work allowed twice per week.</textarea>
+<button onclick="chunkDoc()">Chunk Document</button>
+<div id="chunks"></div>
+</div>
+
+<div class="card">
+<h3>Step 2: Create Embeddings</h3>
+<button onclick="embedChunks()">Generate Embeddings</button>
+<div id="embeddings"></div>
+</div>
+
+<div class="card">
+<h3>Step 3: Store in Vector Database</h3>
+<button onclick="storeVector()">Store Embeddings</button>
+<div id="vectorDB" class="step"></div>
+</div>
+
+<div class="card">
+<h3>Step 4: User Query</h3>
+<input id="queryInput" placeholder="Ask something e.g. How many leave days?" />
+<button onclick="search()">Run Retrieval</button>
+<div id="retrieval"></div>
+</div>
+
+<div class="card">
+<h3>Step 5: LLM Answer Generation</h3>
+<button onclick="generateAnswer()">Generate Answer</button>
+<div id="answer"></div>
+</div>
+
+</div>
+
+<script>
+
+let chunks=[]
+let embeddings=[]
+let vectorDB=[]
+let retrieved=[]
+
+function chunkDoc(){
+
+let text=document.getElementById("docInput").value
+chunks=text.split(".").filter(x=>x.trim().length>0)
+
+let html=""
+chunks.forEach((c,i)=>{
+html+=`<div class="chunk">Chunk ${i+1}: ${c}</div>`
+})
+
+document.getElementById("chunks").innerHTML=html
+}
+
+function fakeEmbedding(text){
+
+let arr=[]
+for(let i=0;i<5;i++){
+arr.push(Math.floor(Math.random()*100))
+}
+return arr
+}
+
+function embedChunks(){
+
+embeddings=[]
+
+chunks.forEach(chunk=>{
+embeddings.push({
+text:chunk,
+vector:fakeEmbedding(chunk)
+})
+})
+
+let html=""
+
+embeddings.forEach(e=>{
+html+=`<div class="embedding">${e.vector.join(",")}</div>`
+})
+
+document.getElementById("embeddings").innerHTML=html
+}
+
+function storeVector(){
+
+vectorDB=[...embeddings]
+
+document.getElementById("vectorDB").innerHTML=
+`Stored ${vectorDB.length} embeddings in vector database`
+}
+
+function similarity(a,b){
+
+let score=0
+
+for(let i=0;i<a.length;i++){
+score+=Math.abs(a[i]-b[i])
+}
+
+return score
+}
+
+function search(){
+
+let query=document.getElementById("queryInput").value
+
+let queryVec=fakeEmbedding(query)
+
+let scored=vectorDB.map(v=>{
+return{
+text:v.text,
+score:similarity(queryVec,v.vector)
+}
+})
+
+scored.sort((a,b)=>a.score-b.score)
+
+retrieved=scored.slice(0,2)
+
+let html="<b>Top Retrieved Chunks:</b><br>"
+
+retrieved.forEach(r=>{
+html+=`<div class="chunk">${r.text}</div>`
+})
+
+document.getElementById("retrieval").innerHTML=html
+}
+
+function generateAnswer(){
+
+if(retrieved.length===0){
+alert("Run retrieval first")
+return
+}
+
+let context=retrieved.map(r=>r.text).join(". ")
+
+let answer=`Based on retrieved knowledge: ${context}`
+
+document.getElementById("answer").innerHTML=
+`<div class="answer">${answer}</div>`
+}
+
+</script>
+
+</body>
+</html>
